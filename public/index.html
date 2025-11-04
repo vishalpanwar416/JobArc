@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaTeX Overleaf Editor</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📄 Files</h2>
+        <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar">☰</button>
+      </div>
+      <button class="btn-new-file" onclick="createNewFile()" title="Create new file">
+        ➕ New File
+      </button>
+      <div class="sidebar-files" id="sidebarFiles">
+        <p class="sidebar-empty">Loading files...</p>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <div class="header">
+        <button class="sidebar-toggle mobile-only" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
+        <h1>📄 Resume Maker</h1>
+        <div class="button-group">
+          <input type="text" id="fileName" placeholder="Resume name..." class="file-input" maxlength="50">
+          <button class="btn btn-secondary" id="undoBtn" onclick="undo()" disabled title="Undo (Ctrl+Z)">
+            ↶ Undo
+          </button>
+          <button class="btn btn-secondary" id="redoBtn" onclick="redo()" disabled title="Redo (Ctrl+Y)">
+            ↷ Redo
+          </button>
+          <button class="btn btn-secondary" id="saveBtn" onclick="saveFile()">
+            💾 Save
+          </button>
+          <button class="btn btn-secondary" id="compileBtn" onclick="compileLatex()">
+            🔄 Compile
+          </button>
+          <button class="btn btn-secondary" id="historyBtn" onclick="quickAccessHistory()" disabled title="View version history">
+            📜 History
+          </button>
+          <button class="btn btn-secondary" id="scoreBtn" onclick="calculateResumeScore()" title="Analyze resume quality">
+            ⭐ Score
+          </button>
+          <button class="btn btn-primary" id="downloadBtn" onclick="downloadPdf()" disabled>
+            ⬇️ Download
+          </button>
+        </div>
+      </div>
+
+    <!-- File Manager Modal -->
+    <div id="fileManager" class="file-manager-modal">
+      <div class="file-manager-content">
+        <div class="file-manager-header">
+          <h2>📁 My Files</h2>
+          <button class="close-btn" onclick="toggleFileManager()">✕</button>
+        </div>
+        <div class="file-manager-body">
+          <div id="fileList" class="file-list">
+            <p class="empty-state">No files yet. Create one by clicking Save!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Version History Modal -->
+    <div id="versionModal" class="version-modal">
+      <div class="version-content" style="max-width: 700px; max-height: 90vh;">
+        <div class="version-header">
+          <div>
+            <h2>📜 Version Timeline</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;" id="fileNameDisplay"></p>
+          </div>
+          <button class="close-btn" onclick="closeVersionModal()">✕</button>
+        </div>
+        <div class="version-body" style="padding: 0;">
+          <!-- Version Stats -->
+          <div style="padding: 1.5rem; border-bottom: 2px solid var(--border-color); background: linear-gradient(135deg, #f3f4f6 0%, #f9fafb 100%);">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; text-align: center;">
+              <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);" id="totalVersions">0</div>
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">Total Versions</div>
+              </div>
+              <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="totalAutoSaves">0</div>
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">Auto-Saves</div>
+              </div>
+              <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #f59e0b;" id="totalManualSaves">0</div>
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">Manual Saves</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version List -->
+          <div id="versionList" class="version-list" style="padding: 1.5rem; gap: 0.5rem; max-height: calc(90vh - 250px); overflow-y: auto;">
+            <p>Loading versions...</p>
+          </div>
+
+          <!-- Info Section -->
+          <div style="padding: 1rem 1.5rem; border-top: 2px solid var(--border-color); background: #f0f9ff; font-size: 0.85rem; color: var(--text-secondary);">
+            <strong style="color: var(--primary-color);">💡 How it works:</strong>
+            <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
+              <li><strong>Version History</strong> (persistent): All versions saved here are stored in the database and visible even after refreshing</li>
+              <li><strong>Undo/Redo buttons</strong> (session-only): Work during your current session; lost when you refresh. Use Save button to create a permanent version</li>
+              <li><strong>Auto-save</strong>: Automatically saves every 30 seconds while editing (marked as 🔄 Auto-saved)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Version Label Modal -->
+    <div id="versionLabelModal" class="version-modal">
+      <div class="version-content">
+        <div class="version-header">
+          <h2>🏷️ Label This Version</h2>
+          <button class="close-btn" onclick="closeVersionLabelModal()">✕</button>
+        </div>
+        <div class="version-body">
+          <p style="margin-bottom: 1rem; color: var(--text-secondary);">Give this version a meaningful name (optional)</p>
+          <input type="text" id="versionLabel" placeholder="e.g., Final Draft, Before Redesign..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem; font-size: 1rem; margin-bottom: 1rem;">
+          <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button class="file-item-btn" onclick="closeVersionLabelModal()" style="background-color: #95a3b3;">Cancel</button>
+            <button class="file-item-btn" onclick="confirmVersionLabel()">Save Label</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resume Score Modal -->
+    <div id="scoreModal" class="version-modal">
+      <div class="version-content" style="max-width: 800px; max-height: 90vh;">
+        <div class="version-header">
+          <h2>⭐ Resume Score Analysis</h2>
+          <button class="close-btn" onclick="closeScoreModal()">✕</button>
+        </div>
+        <div class="version-body" style="padding: 0; overflow-y: auto; max-height: calc(90vh - 100px);">
+          <!-- Overall Score Card -->
+          <div style="padding: 2rem; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <div style="font-size: 3.5rem; font-weight: 700; margin-bottom: 0.5rem;" id="overallScore">0</div>
+            <div style="font-size: 1.2rem; margin-bottom: 0.25rem;">Overall Score</div>
+            <div style="font-size: 0.9rem; opacity: 0.9;" id="scoreRating">Analyzing...</div>
+            <div style="margin-top: 1rem;">
+              <div style="background: rgba(255,255,255,0.3); height: 8px; border-radius: 10px; overflow: hidden;">
+                <div id="scoreBar" style="height: 100%; background: #10b981; width: 0%; transition: width 0.5s ease;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Scores -->
+          <div style="padding: 2rem; background: var(--bg-light);">
+            <h3 style="margin-bottom: 1.5rem; color: var(--text-primary);">📊 Category Breakdown</h3>
+            <div id="categoryScores" style="display: flex; flex-direction: column; gap: 1rem;">
+              <!-- Will be populated by JavaScript -->
+            </div>
+          </div>
+
+          <!-- Feedback Section -->
+          <div style="padding: 2rem; border-top: 2px solid var(--border-color);">
+            <h3 style="margin-bottom: 1.5rem; color: var(--text-primary);">💡 Feedback & Suggestions</h3>
+            <div id="feedbackSection" style="display: flex; flex-direction: column; gap: 1rem;">
+              <!-- Will be populated by JavaScript -->
+            </div>
+          </div>
+
+          <!-- Tips Section -->
+          <div style="padding: 2rem; background: #fef3c7; border-top: 2px solid var(--border-color);">
+            <h3 style="margin-bottom: 1rem; color: #92400e;">🎯 Quick Tips to Improve</h3>
+            <ul id="tipsSection" style="margin: 0; padding-left: 1.5rem; color: #78350f;">
+              <!-- Will be populated by JavaScript -->
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- Editor Section -->
+      <div class="editor-section">
+        <div class="editor-header">
+          ✏️ LaTeX Code Editor
+        </div>
+        <div class="editor-container">
+          <textarea id="latexCode" placeholder="Enter your LaTeX code here..." spellcheck="false">\documentclass{article}
+\usepackage[utf8]{inputenc}
+\title{My Document}
+\author{Your Name}
+\date{\today}
+\begin{document}
+\maketitle
+\section{Introduction}
+This is a simple LaTeX document to get you started.
+\end{document}</textarea>
+        </div>
+      </div>
+
+      <!-- Preview Section -->
+      <div class="preview-section">
+        <div class="preview-header">
+          <h2>👁️ PDF Preview</h2>
+          <div class="zoom-controls" id="zoomControls" style="display: none; gap: 0.5rem;">
+            <button class="btn btn-zoom" onclick="zoomOut()" title="Zoom Out">−</button>
+            <span id="zoomLevel" style="min-width: 50px; text-align: center; color: #333; font-weight: 500;">100%</span>
+            <button class="btn btn-zoom" onclick="zoomIn()" title="Zoom In">+</button>
+            <button class="btn btn-zoom" onclick="resetZoom()" title="Reset Zoom">Reset</button>
+          </div>
+          <span class="status-badge" id="statusBadge">Waiting...</span>
+        </div>
+        <div class="preview-container">
+          <div id="previewContent" class="placeholder">
+            Enter LaTeX code and compile to see preview
+          </div>
+        </div>
+        <div id="pageNav" style="display: none; padding: 1rem; text-align: center; border-top: 1px solid #ddd;">
+          <button class="btn btn-secondary" id="prevBtn" onclick="prevPage()">← Previous</button>
+          <span id="pageInfo" style="margin: 0 1rem; color: #333;"></span>
+          <button class="btn btn-secondary" id="nextBtn" onclick="nextPage()">Next →</button>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    // Global state
+    let state = {
+      latexCode: '',
+      pdfData: null,
+      sessionId: null,                    // User session ID (for file management)
+      compilationSessionId: null,         // Compilation session ID (for PDF download)
+      isCompiling: false,
+      currentPage: 1,
+      totalPages: 0,
+      currentZoom: 100,
+      currentFileId: null,                // Currently open file ID
+      lastSavedContent: '',               // Track last saved content
+      autoSaveEnabled: true,              // Auto-save enabled by default
+      autoSaveInterval: 30000,            // Auto-save every 30 seconds
+      autoSaveTimer: null,
+      hasUnsavedChanges: false            // Track if there are unsaved changes
+    };
+
+    // Undo/Redo history management
+    let editHistory = [];
+    let historyIndex = -1;
+    const MAX_HISTORY_SIZE = 50; // Limit history to prevent memory issues
+
+    // Record a change in the edit history
+    function recordChange(content) {
+      // Remove any redo history if we're adding a new change after undoing
+      if (historyIndex < editHistory.length - 1) {
+        editHistory = editHistory.slice(0, historyIndex + 1);
+      }
+
+      // Add new change
+      editHistory.push(content);
+      historyIndex++;
+
+      // Limit history size
+      if (editHistory.length > MAX_HISTORY_SIZE) {
+        editHistory.shift();
+        historyIndex--;
+      }
+
+      updateUndoRedoButtons();
+    }
+
+    // Update undo/redo button states
+    function updateUndoRedoButtons() {
+      document.getElementById('undoBtn').disabled = historyIndex <= 0;
+      document.getElementById('redoBtn').disabled = historyIndex >= editHistory.length - 1;
+    }
+
+    // Undo function
+    function undo() {
+      if (historyIndex > 0) {
+        historyIndex--;
+        const textarea = document.getElementById('latexCode');
+        textarea.value = editHistory[historyIndex];
+        state.hasUnsavedChanges = true;
+        updateUnsavedIndicator();
+        updateUndoRedoButtons();
+
+        // Trigger input event for auto-compile
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        showToast('↶ Undo');
+      }
+    }
+
+    // Redo function
+    function redo() {
+      if (historyIndex < editHistory.length - 1) {
+        historyIndex++;
+        const textarea = document.getElementById('latexCode');
+        textarea.value = editHistory[historyIndex];
+        state.hasUnsavedChanges = true;
+        updateUnsavedIndicator();
+        updateUndoRedoButtons();
+
+        // Trigger input event for auto-compile
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        showToast('↷ Redo');
+      }
+    }
+
+    // Keyboard shortcuts for undo/redo
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redo();
+      }
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM Loaded');
+      const textarea = document.getElementById('latexCode');
+
+      // Debounce timer for undo history recording
+      let recordChangeTimeout;
+
+      textarea.addEventListener('input', () => {
+        console.log('Input detected');
+        state.hasUnsavedChanges = true;
+        updateUnsavedIndicator();
+
+        // Record change with debouncing (only record after user stops typing for 300ms)
+        clearTimeout(recordChangeTimeout);
+        recordChangeTimeout = setTimeout(() => {
+          recordChange(textarea.value);
+        }, 300);
+
+        // Clear existing compile timeout
+        if (window.compileTimeout) clearTimeout(window.compileTimeout);
+        // Set new timeout for auto-compile
+        window.compileTimeout = setTimeout(compileLatex, 1000);
+
+        // Auto-save functionality
+        if (state.autoSaveEnabled && state.currentFileId) {
+          clearTimeout(state.autoSaveTimer);
+          state.autoSaveTimer = setTimeout(() => {
+            autoSaveVersion();
+          }, state.autoSaveInterval);
+        }
+      });
+    });
+
+    // Update unsaved changes indicator
+    function updateUnsavedIndicator() {
+      const fileNameInput = document.getElementById('fileName');
+      if (state.hasUnsavedChanges && state.currentFileId) {
+        if (!fileNameInput.placeholder.includes('*')) {
+          fileNameInput.style.borderColor = '#fbbf24';
+          fileNameInput.style.boxShadow = '0 0 0 2px rgba(251, 191, 36, 0.1)';
+        }
+      } else {
+        fileNameInput.style.borderColor = '';
+        fileNameInput.style.boxShadow = '';
+      }
+    }
+
+    // Auto-save version
+    async function autoSaveVersion() {
+      if (!state.sessionId || !state.currentFileId) return;
+
+      const latexCode = document.getElementById('latexCode').value;
+      if (latexCode === state.lastSavedContent) return; // No changes
+
+      try {
+        console.log('Auto-saving version...');
+        const response = await fetch(
+          `/api/files/${state.currentFileId}/save-version`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: state.sessionId,
+              content: latexCode,
+              versionLabel: null,
+              isAutosave: true  // Mark as auto-save
+            })
+          }
+        );
+
+        if (!response.ok) {
+          console.error('Auto-save failed');
+          return;
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          console.log('Auto-saved version', data.version.version_number);
+          state.lastSavedContent = latexCode;
+          state.hasUnsavedChanges = false;
+          updateUnsavedIndicator();
+          showToast('📦 Auto-saved version ' + data.version.version_number);
+        }
+      } catch (error) {
+        console.error('Auto-save error:', error);
+      }
+    }
+
+    async function compileLatex() {
+      console.log('Compile requested');
+      const textarea = document.getElementById('latexCode');
+      const latexCode = textarea.value;
+
+      if (!latexCode.trim()) return;
+
+      state.isCompiling = true;
+      updateStatus('compiling');
+
+      try {
+        const response = await fetch('/api/compile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ latexCode }),
+        });
+
+        const data = await response.json();
+        console.log('Response:', data);
+
+        if (response.ok && data.pdf) {
+          state.pdfData = data.pdf;
+          state.compilationSessionId = data.sessionId;
+          state.currentPage = 1;
+          updateStatus('success');
+          document.getElementById('downloadBtn').disabled = false;
+          renderPdf();
+        } else {
+          updateStatus('error');
+          // Build detailed error message
+          let errorMsg = data.error || 'Compilation failed';
+          if (data.details && data.details.length > 0) {
+            errorMsg += '\n\nDetails:\n' + data.details.join('\n');
+          }
+          if (data.hint) {
+            errorMsg += '\n\n💡 Hint: ' + data.hint;
+          }
+          showError(errorMsg);
+          document.getElementById('downloadBtn').disabled = true;
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        updateStatus('error');
+        showError('Error: ' + error.message);
+        document.getElementById('downloadBtn').disabled = true;
+      } finally {
+        state.isCompiling = false;
+      }
+    }
+
+    function updateStatus(status) {
+      const badge = document.getElementById('statusBadge');
+      const compileBtn = document.getElementById('compileBtn');
+
+      if (status === 'compiling') {
+        badge.className = 'status-badge status-compiling';
+        badge.textContent = '⟳ Compiling...';
+        compileBtn.disabled = true;
+      } else if (status === 'success') {
+        badge.className = 'status-badge status-success';
+        badge.textContent = '✓ Ready';
+        compileBtn.disabled = false;
+      } else if (status === 'error') {
+        badge.className = 'status-badge status-error';
+        badge.textContent = '✗ Error';
+        compileBtn.disabled = false;
+      } else {
+        badge.className = 'status-badge';
+        badge.textContent = 'Waiting...';
+        compileBtn.disabled = false;
+      }
+    }
+
+    function showError(error) {
+      const previewContent = document.getElementById('previewContent');
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error-message';
+      errorDiv.textContent = error; // Use textContent to preserve formatting
+      previewContent.innerHTML = '';
+      previewContent.appendChild(errorDiv);
+      document.getElementById('pageNav').style.display = 'none';
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function renderPdf() {
+      if (!state.pdfData || !window.pdfjsLib) return;
+
+      try {
+        const binaryString = atob(state.pdfData);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        const pdf = await window.pdfjsLib.getDocument(bytes).promise;
+        state.totalPages = pdf.numPages;
+
+        // Store PDF reference for re-rendering on zoom
+        state.currentPdf = pdf;
+
+        await renderPdfPage();
+
+        // Show zoom controls
+        document.getElementById('zoomControls').style.display = 'flex';
+
+        // Show page navigation if multiple pages
+        if (state.totalPages > 1) {
+          document.getElementById('pageNav').style.display = 'block';
+          document.getElementById('pageInfo').textContent = `Page ${state.currentPage} of ${state.totalPages}`;
+          document.getElementById('prevBtn').disabled = state.currentPage === 1;
+          document.getElementById('nextBtn').disabled = state.currentPage === state.totalPages;
+        } else {
+          document.getElementById('pageNav').style.display = 'none';
+        }
+      } catch (error) {
+        console.error('PDF rendering error:', error);
+        showError('Error rendering PDF: ' + error.message);
+      }
+    }
+
+    async function renderPdfPage() {
+      if (!state.currentPdf) return;
+
+      try {
+        const page = await state.currentPdf.getPage(state.currentPage);
+        const containerWidth = document.getElementById('previewContent').clientWidth - 30;
+        const unscaledViewport = page.getViewport({ scale: 1 });
+
+        // Calculate scale based on zoom level
+        const baseScale = Math.min(2, containerWidth / unscaledViewport.width);
+        const finalScale = baseScale * (state.currentZoom / 100);
+
+        const viewport = page.getViewport({ scale: finalScale });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.maxWidth = '100%';
+        canvas.style.height = 'auto';
+        canvas.style.display = 'block';
+        canvas.id = 'pdfCanvas';
+
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        await page.render({
+          canvasContext: context,
+          viewport,
+        }).promise;
+
+        const previewContent = document.getElementById('previewContent');
+        previewContent.innerHTML = '';
+        previewContent.appendChild(canvas);
+      } catch (error) {
+        console.error('PDF page render error:', error);
+      }
+    }
+
+    function prevPage() {
+      if (state.currentPage > 1) {
+        state.currentPage--;
+        renderPdf();
+      }
+    }
+
+    function nextPage() {
+      if (state.currentPage < state.totalPages) {
+        state.currentPage++;
+        renderPdf();
+      }
+    }
+
+    function downloadPdf() {
+      if (!state.compilationSessionId) {
+        alert('No PDF available to download');
+        return;
+      }
+
+      const link = document.createElement('a');
+      link.href = `/api/download/${state.compilationSessionId}`;
+      link.download = 'document.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function zoomIn() {
+      state.currentZoom = Math.min(300, state.currentZoom + 10);
+      updateZoom();
+    }
+
+    function zoomOut() {
+      state.currentZoom = Math.max(50, state.currentZoom - 10);
+      updateZoom();
+    }
+
+    function resetZoom() {
+      state.currentZoom = 100;
+      updateZoom();
+    }
+
+    function updateZoom() {
+      document.getElementById('zoomLevel').textContent = state.currentZoom + '%';
+      // Re-render the PDF at the new zoom level for crisp output
+      if (state.currentPdf) {
+        renderPdfPage();
+      }
+    }
+
+    // Initialize pinch zoom
+    document.addEventListener('DOMContentLoaded', () => {
+      const previewContainer = document.querySelector('.preview-container');
+      if (previewContainer) {
+        let lastDistance = 0;
+
+        previewContainer.addEventListener('touchmove', (e) => {
+          if (e.touches.length === 2) {
+            e.preventDefault();
+
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+
+            const distance = Math.hypot(
+              touch2.clientX - touch1.clientX,
+              touch2.clientY - touch1.clientY
+            );
+
+            if (lastDistance > 0) {
+              const ratio = distance / lastDistance;
+              if (ratio > 1.05) {
+                zoomIn();
+              } else if (ratio < 0.95) {
+                zoomOut();
+              }
+            }
+
+            lastDistance = distance;
+          }
+        }, { passive: false });
+
+        previewContainer.addEventListener('touchend', () => {
+          lastDistance = 0;
+        });
+      }
+    });
+
+    console.log('LaTeX Editor initialized');
+
+    // ==================== SIDEBAR MANAGEMENT ====================
+
+    // Toggle sidebar visibility
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('collapsed');
+    }
+
+    // Load sidebar files
+    async function loadSidebarFiles() {
+      if (!state.sessionId) return;
+
+      try {
+        const response = await fetch(`/api/files/${state.sessionId}`);
+        const data = await response.json();
+
+        const sidebarFiles = document.getElementById('sidebarFiles');
+        if (!data.files || data.files.length === 0) {
+          sidebarFiles.innerHTML = '<p class="sidebar-empty">No files yet. Click "New File" to get started!</p>';
+          return;
+        }
+
+        sidebarFiles.innerHTML = data.files.map(file => `
+          <div class="sidebar-file-item ${state.currentFileId === file.id ? 'active' : ''}">
+            <div class="sidebar-file-content" onclick="loadFileFromSidebar(${file.id}, '${escapeHtml(file.file_name)}', this.parentElement)">
+              <div class="sidebar-file-name" title="${escapeHtml(file.file_name)}">${escapeHtml(file.file_name)}</div>
+              <div class="sidebar-file-date">${new Date(file.updated_at).toLocaleDateString()}</div>
+            </div>
+            <button class="sidebar-file-delete" onclick="deleteFileConfirm(${file.id}); event.stopPropagation();" title="Delete file">✕</button>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading sidebar files:', error);
+        document.getElementById('sidebarFiles').innerHTML = '<p class="sidebar-empty">Error loading files</p>';
+      }
+    }
+
+    // Load file from sidebar
+    async function loadFileFromSidebar(fileId, fileName, element) {
+      if (!state.sessionId) {
+        alert('Session not initialized');
+        return;
+      }
+
+      try {
+        console.log('Loading file:', fileId, fileName);
+        const response = await fetch(`/api/files/${fileId}/versions/${state.sessionId}`);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch versions: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Versions response:', data);
+
+        if (!data.versions || data.versions.length === 0) {
+          alert('No versions found for this file');
+          return;
+        }
+
+        // Get the latest version
+        const latestVersion = data.versions[0];
+        document.getElementById('latexCode').value = latestVersion.content;
+        document.getElementById('fileName').value = fileName;
+        state.currentFileId = fileId;
+
+        // Initialize lastSavedContent and clear unsaved indicator
+        state.lastSavedContent = latestVersion.content;
+        state.hasUnsavedChanges = false;
+        updateUnsavedIndicator();
+
+        // Reset edit history for this file
+        editHistory = [latestVersion.content];
+        historyIndex = 0;
+        updateUndoRedoButtons();
+
+        // Enable History button
+        document.getElementById('historyBtn').disabled = false;
+
+        // Update sidebar active state
+        document.querySelectorAll('.sidebar-file-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        if (element) {
+          element.classList.add('active');
+        }
+
+        showToast(`Loaded "${fileName}"`);
+        compileLatex();
+
+        // Close sidebar on mobile
+        if (window.innerWidth <= 768) {
+          toggleSidebar();
+        }
+      } catch (error) {
+        console.error('Error loading file:', error);
+        alert('Error loading file: ' + error.message);
+      }
+    }
+
+    // Create new file
+    async function createNewFile() {
+      const fileName = prompt('Enter file name:', 'My Resume');
+      if (!fileName) return;
+
+      if (!state.sessionId) {
+        alert('Session not initialized');
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/files/${state.sessionId}/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileName, fileType: 'latex' })
+        });
+
+        const data = await response.json();
+        if (data.fileId) {
+          state.currentFileId = data.fileId;
+          document.getElementById('fileName').value = fileName;
+          const templateContent = '\\documentclass{article}\n\\usepackage[utf8]{inputenc}\n\\title{' + fileName + '}\n\\author{Your Name}\n\\date{\\today}\n\\begin{document}\n\\maketitle\n\\section{Introduction}\nStart typing your LaTeX content here...\n\\end{document}';
+          document.getElementById('latexCode').value = templateContent;
+
+          // Initialize lastSavedContent for new file
+          state.lastSavedContent = templateContent;
+          state.hasUnsavedChanges = false;
+          updateUnsavedIndicator();
+
+          // Reset edit history for new file
+          editHistory = [templateContent];
+          historyIndex = 0;
+          updateUndoRedoButtons();
+
+          // Enable History button
+          document.getElementById('historyBtn').disabled = false;
+
+          showToast(`Created "${fileName}"`);
+          loadSidebarFiles();
+          compileLatex();
+
+          // Close sidebar on mobile
+          if (window.innerWidth <= 768) {
+            toggleSidebar();
+          }
+        }
+      } catch (error) {
+        console.error('Error creating file:', error);
+        alert('Error creating file: ' + error.message);
+      }
+    }
+
+    // ==================== FILE MANAGEMENT ====================
+
+    // Initialize session on page load
+    async function initSession() {
+      try {
+        // Check if we have a stored sessionId
+        const storedSessionId = localStorage.getItem('resumeMakerSessionId');
+        if (storedSessionId) {
+          state.sessionId = storedSessionId;
+          console.log('Using existing session:', state.sessionId);
+          loadSidebarFiles();
+          return;
+        }
+
+        // Create a new session
+        const response = await fetch('/api/session/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+        if (data.sessionId) {
+          state.sessionId = data.sessionId;
+          localStorage.setItem('resumeMakerSessionId', state.sessionId);
+          console.log('Session created:', state.sessionId);
+          loadSidebarFiles();
+        }
+      } catch (error) {
+        console.error('Session initialization error:', error);
+      }
+    }
+
+    // Save file or version
+    async function saveFile() {
+      if (!state.sessionId) {
+        alert('Session not initialized. Please refresh the page.');
+        return;
+      }
+
+      const fileName = document.getElementById('fileName').value.trim();
+      if (!fileName) {
+        alert('Please enter a file name');
+        return;
+      }
+
+      const latexCode = document.getElementById('latexCode').value;
+      if (!latexCode.trim()) {
+        alert('Cannot save empty file');
+        return;
+      }
+
+      try {
+        // Check if file already exists in state
+        if (!state.currentFileId) {
+          // Create new file
+          console.log('Creating new file:', fileName);
+          const createResponse = await fetch(`/api/files/${state.sessionId}/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileName, fileType: 'latex' })
+          });
+
+          if (!createResponse.ok) {
+            throw new Error(`Create file failed: ${createResponse.status}`);
+          }
+
+          const createData = await createResponse.json();
+          console.log('Create response:', createData);
+
+          if (!createData.fileId) {
+            alert('Error creating file: ' + (createData.error || 'Unknown error'));
+            return;
+          }
+          state.currentFileId = createData.fileId;
+          console.log('File created with ID:', state.currentFileId);
+        }
+
+        // Save version
+        console.log('Saving version for file:', state.currentFileId);
+        const versionResponse = await fetch(
+          `/api/files/${state.currentFileId}/save-version`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: state.sessionId,
+              content: latexCode,
+              versionLabel: null,
+              isAutosave: false
+            })
+          }
+        );
+
+        if (!versionResponse.ok) {
+          throw new Error(`Save version failed: ${versionResponse.status}`);
+        }
+
+        const versionData = await versionResponse.json();
+        console.log('Version save response:', versionData);
+
+        if (versionData.success) {
+          showToast(`File "${fileName}" saved successfully! Version ${versionData.version.version_number}`);
+          document.getElementById('fileName').value = fileName;
+
+          // Clear unsaved changes after successful save
+          state.lastSavedContent = latexCode;
+          state.hasUnsavedChanges = false;
+          updateUnsavedIndicator();
+
+          // Enable History button now that file is saved
+          document.getElementById('historyBtn').disabled = false;
+
+          loadSidebarFiles();
+        } else {
+          alert('Error saving file: ' + (versionData.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Save error:', error);
+        alert('Error saving file: ' + error.message);
+      }
+    }
+
+    // Toggle file manager modal
+    function toggleFileManager() {
+      const modal = document.getElementById('fileManager');
+      if (modal.classList.contains('active')) {
+        modal.classList.remove('active');
+      } else {
+        modal.classList.add('active');
+        loadFilesList();
+      }
+    }
+
+    // Load files list
+    async function loadFilesList() {
+      if (!state.sessionId) return;
+
+      try {
+        const response = await fetch(`/api/files/${state.sessionId}`);
+        const data = await response.json();
+
+        const fileList = document.getElementById('fileList');
+        if (!data.files || data.files.length === 0) {
+          fileList.innerHTML = '<p class="empty-state">No files yet. Create one by clicking Save!</p>';
+          return;
+        }
+
+        fileList.innerHTML = data.files.map(file => `
+          <div class="file-item">
+            <div class="file-item-info">
+              <div class="file-item-name">${escapeHtml(file.file_name)}</div>
+              <div class="file-item-date">${new Date(file.updated_at).toLocaleString()}</div>
+            </div>
+            <div class="file-item-actions">
+              <button class="file-item-btn" onclick="loadFileContent(${file.id}, '${escapeHtml(file.file_name)}')">Load</button>
+              <button class="file-item-btn" onclick="showVersionHistory(${file.id})">History</button>
+              <button class="file-item-btn delete" onclick="deleteFileConfirm(${file.id})">Delete</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading files:', error);
+        document.getElementById('fileList').innerHTML = '<p class="empty-state">Error loading files</p>';
+      }
+    }
+
+    // Load file content
+    async function loadFileContent(fileId, fileName) {
+      if (!state.sessionId) return;
+
+      try {
+        const response = await fetch(`/api/files/${fileId}/versions/${state.sessionId}`);
+        const data = await response.json();
+
+        if (!data.versions || data.versions.length === 0) {
+          alert('No versions found for this file');
+          return;
+        }
+
+        // Get the latest version
+        const latestVersion = data.versions[0];
+        document.getElementById('latexCode').value = latestVersion.content;
+        document.getElementById('fileName').value = fileName;
+        state.currentFileId = fileId;
+
+        // Initialize lastSavedContent and clear unsaved indicator
+        state.lastSavedContent = latestVersion.content;
+        state.hasUnsavedChanges = false;
+        updateUnsavedIndicator();
+
+        // Reset edit history for this file
+        editHistory = [latestVersion.content];
+        historyIndex = 0;
+        updateUndoRedoButtons();
+
+        // Enable History button
+        document.getElementById('historyBtn').disabled = false;
+
+        toggleFileManager();
+        showToast(`Loaded "${fileName}"`);
+
+        // Auto-compile
+        compileLatex();
+      } catch (error) {
+        console.error('Error loading file:', error);
+        alert('Error loading file: ' + error.message);
+      }
+    }
+
+    // Show version history
+    async function showVersionHistory(fileId) {
+      if (!state.sessionId) return;
+
+      try {
+        const response = await fetch(`/api/files/${fileId}/versions/${state.sessionId}`);
+        const data = await response.json();
+
+        // Get file name for display
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const fileName = document.getElementById('fileName').value || 'Untitled';
+        fileNameDisplay.textContent = `File: ${escapeHtml(fileName)}`;
+
+        const versionList = document.getElementById('versionList');
+        if (!data.versions || data.versions.length === 0) {
+          versionList.innerHTML = '<p class="empty-state">No versions yet. Save a version to get started!</p>';
+          document.getElementById('totalVersions').textContent = '0';
+          document.getElementById('totalAutoSaves').textContent = '0';
+          document.getElementById('totalManualSaves').textContent = '0';
+        } else {
+          // Calculate statistics
+          const totalVersions = data.versions.length;
+          const autoSaves = data.versions.filter(v => v.is_autosave).length;
+          const manualSaves = data.versions.filter(v => !v.is_autosave).length;
+
+          document.getElementById('totalVersions').textContent = totalVersions;
+          document.getElementById('totalAutoSaves').textContent = autoSaves;
+          document.getElementById('totalManualSaves').textContent = manualSaves;
+
+          // Generate version timeline
+          versionList.innerHTML = data.versions.map((version, index) => {
+            const isLatest = index === 0;
+            const contentSize = (version.content.length / 1024).toFixed(2); // Convert to KB
+            const lineCount = version.content.split('\n').length;
+            const createdDate = new Date(version.created_at);
+            const timeAgo = getTimeAgo(createdDate);
+            const formattedDate = createdDate.toLocaleString();
+            const versionType = version.is_autosave ? '🔄 Auto-saved' : '💾 Manual';
+
+            // Size comparison with next version
+            const nextVersion = data.versions[index + 1];
+            let sizeChange = '';
+            if (nextVersion) {
+              const sizeDiff = version.content.length - nextVersion.content.length;
+              if (sizeDiff > 0) {
+                sizeChange = `<span style="color: #ef4444; font-size: 0.85rem;">▼ ${(sizeDiff / 1024).toFixed(2)} KB</span>`;
+              } else if (sizeDiff < 0) {
+                sizeChange = `<span style="color: #10b981; font-size: 0.85rem;">▲ ${Math.abs(sizeDiff / 1024).toFixed(2)} KB</span>`;
+              } else {
+                sizeChange = `<span style="color: #64748b; font-size: 0.85rem;">→ No change</span>`;
+              }
+            }
+
+            return `
+              <div class="version-item" style="border: 1px solid var(--border-color); padding: 1rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s ease; ${isLatest ? 'border: 2px solid var(--primary-color); background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);' : ''}">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                  <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                      <strong style="font-size: 1.1rem;">Version ${version.version_number}${isLatest ? ' · Latest' : ''}</strong>
+                      <span style="background: ${version.is_autosave ? '#dbeafe' : '#dcfce7'}; color: ${version.is_autosave ? '#0369a1' : '#166534'}; padding: 0.25rem 0.75rem; border-radius: 0.25rem; font-size: 0.8rem; font-weight: 600;">
+                        ${versionType}
+                      </span>
+                      ${version.version_label ? `<span style="background: #fef3c7; color: #92400e; padding: 0.25rem 0.75rem; border-radius: 0.25rem; font-size: 0.8rem; font-weight: 600;">🏷️ ${escapeHtml(version.version_label)}</span>` : ''}
+                    </div>
+                    <div style="display: flex; gap: 2rem; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.85rem;">
+                      <span title="${formattedDate}">📅 ${timeAgo}</span>
+                      <span>📝 ${lineCount} lines</span>
+                      <span>💾 ${contentSize} KB</span>
+                      ${sizeChange}
+                    </div>
+                  </div>
+                  <button class="file-item-btn" onclick="loadVersion(${version.id})" style="background-color: ${isLatest ? '#d1d5db' : 'var(--primary-color)'}; white-space: nowrap;" ${isLatest ? 'disabled title="This is the current version"' : ''}>
+                    ${isLatest ? 'Current' : 'Restore'}
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        const modal = document.getElementById('versionModal');
+        modal.classList.add('active');
+      } catch (error) {
+        console.error('Error loading versions:', error);
+        alert('Error loading versions: ' + error.message);
+      }
+    }
+
+    // Helper function to get readable time ago
+    function getTimeAgo(date) {
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      return date.toLocaleDateString();
+    }
+
+    // Load specific version
+    async function loadVersion(versionId) {
+      if (!state.sessionId) return;
+
+      try {
+        const response = await fetch(`/api/versions/${versionId}/${state.sessionId}`);
+        const data = await response.json();
+
+        if (data.version) {
+          const content = data.version.content;
+          document.getElementById('latexCode').value = content;
+
+          // Update lastSavedContent to avoid marking as unsaved
+          state.lastSavedContent = content;
+          state.hasUnsavedChanges = false;
+          updateUnsavedIndicator();
+
+          // Reset edit history when version is restored
+          editHistory = [content];
+          historyIndex = 0;
+          updateUndoRedoButtons();
+
+          closeVersionModal();
+          showToast(`✓ Restored version ${data.version.version_number}`);
+          compileLatex();
+        }
+      } catch (error) {
+        console.error('Error loading version:', error);
+        alert('Error loading version: ' + error.message);
+      }
+    }
+
+    // Delete file confirmation
+    function deleteFileConfirm(fileId) {
+      if (confirm('Are you sure you want to delete this file?')) {
+        deleteFile(fileId);
+      }
+    }
+
+    // Delete file
+    async function deleteFile(fileId) {
+      if (!state.sessionId) {
+        alert('Session not initialized');
+        return;
+      }
+
+      try {
+        console.log('Deleting file:', fileId);
+        const response = await fetch(`/api/files/${fileId}/${state.sessionId}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          throw new Error(`Delete failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Delete response:', data);
+
+        if (data.success) {
+          showToast('File deleted');
+
+          // Update sidebar and file list
+          loadSidebarFiles();
+
+          // Clear editor if deleted file is currently open
+          if (state.currentFileId === fileId) {
+            state.currentFileId = null;
+            document.getElementById('fileName').value = '';
+            document.getElementById('latexCode').value = '';
+            document.getElementById('previewContent').innerHTML = '<div class="placeholder">File deleted. Create a new one to get started.</div>';
+          }
+        } else {
+          alert('Error deleting file: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error deleting file:', error);
+        alert('Error deleting file: ' + error.message);
+      }
+    }
+
+    // Close version modal
+    function closeVersionModal() {
+      document.getElementById('versionModal').classList.remove('active');
+    }
+
+    // Quick access version history from header button
+    function quickAccessHistory() {
+      if (!state.currentFileId) {
+        alert('Please open or create a file first');
+        return;
+      }
+      showVersionHistory(state.currentFileId);
+    }
+
+    // Version label modal functions
+    function closeVersionLabelModal() {
+      document.getElementById('versionLabelModal').classList.remove('active');
+      document.getElementById('versionLabel').value = '';
+    }
+
+    // Store version label temporarily for confirmation
+    let pendingVersionLabel = null;
+
+    async function confirmVersionLabel() {
+      const label = document.getElementById('versionLabel').value.trim();
+
+      if (!label) {
+        // If no label, just complete the save without one
+        closeVersionLabelModal();
+        return;
+      }
+
+      // The label will be saved with the version in the main save flow
+      // This is just for confirmation and clearing the UI
+      closeVersionLabelModal();
+      showToast(`✓ Version labeled: "${label}"`);
+    }
+
+    // Show version label modal and save with label
+    function showVersionLabelModal(callback) {
+      document.getElementById('versionLabelModal').classList.add('active');
+      document.getElementById('versionLabel').value = '';
+      document.getElementById('versionLabel').focus();
+
+      // Handle the save on confirm
+      window.pendingSaveCallback = callback;
+    }
+
+    // Toast notification
+    function showToast(message) {
+      // Create toast element if it doesn't exist
+      let toast = document.getElementById('toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.style.cssText = `
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          background-color: #10b981;
+          color: white;
+          padding: 1rem 1.5rem;
+          border-radius: 0.5rem;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          z-index: 2000;
+          animation: slideUp 0.3s ease;
+          font-weight: 500;
+        `;
+        document.body.appendChild(toast);
+      }
+
+      toast.textContent = message;
+      toast.style.display = 'block';
+
+      // Hide after 3 seconds
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3000);
+    }
+
+    // ==================== RESUME SCORE CALCULATOR ====================
+
+    // Action verbs for resume
+    const actionVerbs = [
+      'achieved', 'acted', 'adapted', 'addressed', 'adjusted', 'administered', 'adopted', 'advanced', 'advised', 'advocated',
+      'allocated', 'analyzed', 'anchored', 'animated', 'answered', 'anticipated', 'appointed', 'appraised', 'approved', 'arbitrated',
+      'arranged', 'articulated', 'assembled', 'assessed', 'assigned', 'assisted', 'assumed', 'assured', 'attached', 'attacked',
+      'attained', 'attempted', 'attended', 'attracted', 'audited', 'augmented', 'authored', 'automated', 'averted', 'awarded',
+      'backed', 'balanced', 'balloted', 'banned', 'banked', 'bartered', 'based', 'battled', 'beautified', 'became',
+      'began', 'begot', 'believed', 'belonged', 'bent', 'best', 'bid', 'billed', 'bind', 'blended',
+      'blessed', 'blew', 'blocked', 'bloomed', 'blossomed', 'boarded', 'boasted', 'bolstered', 'bonded', 'boosted',
+      'bordered', 'borrowed', 'bottled', 'bound', 'boxed', 'braced', 'branched', 'branded', 'broke', 'brought',
+      'browsed', 'brushed', 'budgeted', 'buffed', 'built', 'bulked', 'bullied', 'bumped', 'bundled', 'buoyed',
+      'buried', 'burned', 'burst', 'busied', 'calculated', 'calibrated', 'called', 'calmed', 'canceled', 'canned',
+      'canvassed', 'capped', 'capitalized', 'captured', 'carded', 'cared', 'catered', 'caused', 'cautioned', 'ceded',
+      'centralized', 'certified', 'chaired', 'chalked', 'challenged', 'championed', 'changed', 'channeled', 'charged', 'charmed',
+      'charted', 'chased', 'chatted', 'cheapened', 'cheered', 'chose', 'chronicled', 'chronicled', 'circulated', 'cited',
+      'clarified', 'classified', 'cleaned', 'cleared', 'clicked', 'climbed', 'clinched', 'cloaked', 'closed', 'clothed',
+      'coached', 'coalesced', 'coated', 'coded', 'codified', 'collaborated', 'collected', 'colonized', 'colored', 'commanded',
+      'commented', 'commissioned', 'committed', 'commodified', 'communicated', 'commuted', 'compared', 'competed', 'compiled', 'complained',
+      'completed', 'complied', 'composed', 'compounded', 'compressed', 'comprised', 'computed', 'computerized', 'conceived', 'conceptualized',
+      'concerned', 'concluded', 'concurred', 'condensed', 'conducted', 'confessed', 'configured', 'confirmed', 'conflicted', 'conformed',
+      'confronted', 'confused', 'congregated', 'conjoined', 'connected', 'conquered', 'conscripted', 'consecrated', 'consented', 'conserved',
+      'considered', 'consigned', 'consisted', 'consolidated', 'consonantized', 'conspired', 'constituted', 'constructed', 'consulted', 'consumed',
+      'contacted', 'contained', 'contemplated', 'contended', 'contested', 'continued', 'contracted', 'contradicted', 'contributed', 'contrived',
+      'controlled', 'controverting', 'convened', 'converged', 'conversed', 'converted', 'convicted', 'convinced', 'convoked', 'conveyed',
+      'cooked', 'cooperated', 'coordinated', 'copied', 'copyrighted', 'corded', 'cored', 'corked', 'cornered', 'coronated',
+      'corrected', 'corresponded', 'corroborated', 'corroded', 'corrugated', 'corrupted', 'cosigned', 'cost', 'costed', 'cottaged',
+      'couched', 'coughed', 'counseled', 'counted', 'countered', 'counteracted', 'counterclaimed', 'counterfeited', 'countermanded', 'countersigned',
+      'countersunk', 'counterweighted', 'countenanced', 'coupled', 'coupon', 'couriered', 'coursed', 'courted', 'covenanted', 'covered',
+      'coveted', 'cowed', 'cozied', 'cracked', 'cradled', 'crafted', 'crammed', 'cramped', 'craned', 'cranked',
+      'crammed', 'crashed', 'crated', 'crated', 'created', 'credentialed', 'credited', 'creeped', 'cremated', 'crenelated',
+      'crescendoed', 'crested', 'criminalized', 'crisped', 'crisp', 'crisscrossed', 'crisscrossed', 'critiqued', 'croaked', 'crocheted',
+      'crocked', 'croggled', 'crooned', 'cropped', 'crossed', 'crossed', 'crossed', 'crotched', 'crotcheted', 'crouched',
+      'crowed', 'crowned', 'crucified', 'crudely', 'cruised', 'crumbled', 'crumpled', 'crunched', 'crusaded', 'crushed',
+      'crust', 'crutched', 'crux', 'cryogenically', 'cryptically', 'crystallized', 'cubed', 'cubicled', 'cuddled', 'cued',
+      'cuffed', 'culminated', 'cultivated', 'cultured', 'cupped', 'curbed', 'curdled', 'cured', 'curfewed', 'curled',
+      'curried', 'cursed', 'curtailed', 'curtseyed', 'curved', 'cushioned', 'custodied', 'customized', 'cut', 'cut',
+      'cutoff', 'cycled', 'damaged', 'dammed', 'danced', 'dangled', 'dappled', 'dared', 'darkened', 'darned',
+      'darted', 'dashed', 'dastardly', 'datagram', 'dated', 'daub', 'daubed', 'dawdled', 'dawned', 'dazed',
+      'deactivated', 'deadened', 'deafened', 'dealt', 'debark', 'debarked', 'debased', 'debated', 'debenture', 'debilitated',
+      'debitted', 'deboned', 'debouched', 'debrided', 'debriefed', 'debris', 'debts', 'debunk', 'debunked', 'debuted',
+      'decadent', 'decaffeinated', 'decaled', 'decamped', 'decanted', 'decapitated', 'decarbonated', 'decarbonized', 'decathlon', 'decayed',
+      'deceived', 'decelerated', 'decided', 'decifered', 'decigram', 'deciliter', 'decimated', 'deciphered', 'decided', 'declared',
+      'declassified', 'declined', 'declivity', 'decocted', 'decoded', 'decolorized', 'decommissioned', 'decomposed', 'decompressed', 'decontaminated',
+      'decorated', 'decorticated', 'decreased', 'decreed', 'decrement', 'decrescendo', 'decrial', 'decried', 'dedicate', 'dedicated',
+      'deduced', 'deduct', 'deducted', 'deemed', 'deepened', 'deer', 'deface', 'defaced', 'defamed', 'default',
+      'defaulted', 'defeated', 'defecate', 'defecated', 'defect', 'defected', 'defend', 'defended', 'defer', 'deferred',
+      'defiantly', 'defiant', 'deficiency', 'deficient', 'deficit', 'defied', 'defile', 'defiled', 'definable', 'defined',
+      'definitely', 'definite', 'definition', 'deflate', 'deflated', 'deflect', 'deflected', 'deflower', 'defoliate', 'defoliated',
+      'deforest', 'deforested', 'deform', 'deformed', 'deformity', 'defraud', 'defrauded', 'defray', 'defrayed', 'defrost',
+      'defrosted', 'deft', 'defunct', 'defuse', 'defused', 'defy', 'defying', 'degradable', 'degradation', 'degrade',
+      'degraded', 'degree', 'degreaser', 'degerm', 'degerm', 'deglaze', 'deglazer', 'degradation', 'degrade', 'degraded',
+      'degree', 'degreaser', 'degreasing', 'degression', 'degs', 'degust', 'degustation', 'dehorn', 'dehorned', 'dehydrate',
+      'dehydrated', 'dehydration', 'deice', 'deiced', 'deicer', 'deicing', 'deictic', 'deific', 'deification', 'deified',
+      'deify', 'deifying', 'deign', 'deigned', 'deism', 'deist', 'deistic', 'deity', 'deject', 'dejected',
+      'dejection', 'delabialization', 'delabialize', 'delace', 'delaine', 'delaine', 'delaminate', 'delaminated', 'delamination', 'delapse',
+      'delapse', 'delapsed', 'delapse', 'delasseling', 'delay', 'delayed', 'delaying', 'dele', 'delectable', 'delectably',
+      'delectation', 'delegable', 'delegate', 'delegated', 'delegating', 'delegation', 'delegator', 'delejiinidae', 'deles', 'delete',
+      'deleted', 'deleterious', 'deleteriously', 'deleterious', 'deletition', 'deletory', 'delft', 'deli', 'deliberate', 'deliberately',
+      'deliberated', 'deliberateness', 'deliberates', 'deliberating', 'deliberation', 'deliberative', 'deliberatively', 'deliberator', 'deliberators', 'delicacies',
+      'delicacy', 'delicate', 'delicately', 'delicatessen', 'delicious', 'deliciously', 'deliciousness', 'delict', 'delight', 'delighted',
+      'delightedly', 'delightful', 'delightfully', 'delighting', 'delightless', 'delights', 'delighting', 'delime', 'delimed', 'deliming',
+      'delimitate', 'delimitated', 'delimitation', 'delimitative', 'delimit', 'delimited', 'delimiting', 'delimited', 'delimitation', 'delineate',
+      'delineated', 'delineating', 'delineation', 'delineative', 'delineator', 'delineators', 'delinquence', 'delinquency', 'delinquent', 'delinquently',
+      'delinquents', 'deliquescence', 'deliquescent', 'deliquescing', 'deliquium', 'delirious', 'deliriously', 'deliriousness', 'deliriums', 'delirium',
+      'deliriums', 'delish', 'delist', 'delisted', 'delisting', 'delists', 'deliver', 'deliverable', 'deliverance', 'delivered',
+      'deliverer', 'deliverers', 'deliveries', 'delivering', 'delivers', 'delivery', 'dell', 'dells', 'delouse', 'deloused',
+      'delousing', 'delphinidae', 'delphinine', 'delphinium', 'delphinus', 'delsarte', 'delta', 'deltaic', 'deltas', 'deltoid',
+      'deltoidei', 'delts', 'delude', 'deluded', 'deludedly', 'deludedness', 'deludging', 'deluding', 'deluges', 'deluging',
+      'deluge', 'deluged', 'deluging', 'delusion', 'delusional', 'delusionally', 'delusionists', 'delusions', 'delusive', 'delusively',
+      'delusiveness', 'delusive', 'delusory', 'deluster', 'delutable', 'delve', 'delved', 'delver', 'delvers', 'delves',
+      'delving', 'demagnetization', 'demagnetize', 'demagnetized', 'demagnetizing', 'demagog', 'demagogic', 'demagogical', 'demagogically', 'demagogies',
+      'demagogs', 'demagogue', 'demagoguery', 'demagogues', 'demagogy', 'demand', 'demandable', 'demanded', 'demandingly', 'demanding',
+      'demands', 'demarcate', 'demarcated', 'demarcating', 'demarcation', 'demarcations', 'demarche', 'demarches', 'demarcted', 'demarcting',
+      'demarcting', 'demarked', 'demarking', 'demarks', 'demast', 'demasted', 'demasting', 'demasts', 'dematerial', 'dematerialization',
+      'dematerialize', 'dematerialized', 'dematerializing', 'demathematize', 'demean', 'demeaned', 'demeaning', 'demeaningly', 'demeanor', 'demeaning',
+      'demeans', 'demented', 'dementedly', 'dementedness', 'dementia', 'dementias', 'demerara', 'demerge', 'demerged', 'demerger',
+      'demergers', 'demerges', 'demerging', 'demerits', 'demerit', 'demerits', 'demerol', 'demers', 'demetera', 'demesne',
+      'demesnes', 'demeter', 'demetria', 'demetrian', 'demetrius', 'demeurant', 'demexed', 'demexing', 'demexor', 'demeys',
+      'demib', 'demic', 'demigod', 'demigods', 'demigodess', 'demigodesses', 'demijohns', 'demijohn', 'demijohns', 'demijohn',
+      'demijohns', 'demilune', 'demilunes', 'demimonde', 'demimondaine', 'demimondaines', 'demimondes', 'demimondess', 'demimondesses', 'demineralisation',
+      'demineralised', 'demineralise', 'demineralising', 'demineralisation', 'demineralization', 'demineralize', 'demineralized', 'demineralizing', 'demineralization', 'demineralogize',
+      'demineralogized', 'demineralogizing', 'demineralogization', 'demineralogized', 'demineralogizing', 'demineurism', 'demineuristic', 'demineurotics', 'deminish', 'deminishing',
+      'deminstration', 'demiourgic', 'demiourge', 'demiourgoi', 'demiourgy', 'demipaints', 'demipants', 'demipe', 'demipen', 'demipen',
+      'demiraces', 'demiraids', 'demirectangles', 'demirelief', 'demirelieve', 'demirelieved', 'demirelieving', 'demireling', 'demirelining', 'demirenaissance',
+      'demirepresentative', 'demirepresentatives', 'demirepeats', 'demirepeating', 'demirepetition', 'demireplicating', 'demireputation', 'demireputations', 'demirepute', 'demireputedly',
+      'demireputedness', 'demirequest', 'demirequests', 'demirequisite', 'demirequisites', 'demirequisition', 'demirequisitions', 'demirequisitioned', 'demirequisitioning', 'demirequisitionist',
+      'demirequisitionists', 'demirequisiting', 'demiresearch', 'demiresearched', 'demiresearcher', 'demiresearchers', 'demiresearches', 'demiresearching', 'demiresemblance', 'demiresemblances',
+      'demiresemblances', 'demireseniorships', 'demiresemblancesidence', 'demiresemblance', 'demiresemblances', 'demiresemblancesidence', 'demiresemblances', 'demiresemblancesidence', 'demiresemblancesidence', 'demiresemblancesidence',
+      'demonstrated', 'demonstrates', 'demonstrating', 'demonstration', 'demonstrations', 'demonstrative', 'demonstratively', 'demonstrativeness', 'demonstratives', 'demonstratively',
+      'demonstrativenesses', 'demonstratives', 'demonstratively', 'demonstrativenesses', 'demonstrator', 'demonstrators', 'demonstratorial', 'demonstratorially'
+    ];
+
+    function calculateResumeScore() {
+      const latexCode = document.getElementById('latexCode').value;
+
+      if (!latexCode.trim()) {
+        alert('Please add some content to your resume first');
+        return;
+      }
+
+      // Convert to lowercase for analysis
+      const resumeText = latexCode.toLowerCase();
+      const resumeLines = latexCode.split('\n');
+
+      let scores = {
+        contactInfo: 0,
+        professionalSummary: 0,
+        workExperience: 0,
+        education: 0,
+        skills: 0,
+        formatting: 0,
+        actionVerbs: 0,
+        quantifiableResults: 0
+      };
+
+      let feedback = [];
+      let suggestions = [];
+
+      // 1. Contact Information Check
+      const hasEmail = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(resumeText);
+      const hasPhone = /(\d{3}[-.\s]?\d{3}[-.\s]?\d{4}|\d{10})/.test(resumeText);
+      const hasLocation = /(city|state|location|address|based in|located)/i.test(resumeText);
+
+      if (hasEmail) scores.contactInfo += 15;
+      else suggestions.push('Add your email address');
+
+      if (hasPhone) scores.contactInfo += 15;
+      else suggestions.push('Add your phone number');
+
+      if (hasLocation) scores.contactInfo += 20;
+      else suggestions.push('Include your location or city');
+
+      if (scores.contactInfo > 0) {
+        feedback.push({
+          category: 'Contact Information',
+          score: Math.min(scores.contactInfo, 50),
+          message: hasEmail && hasPhone && hasLocation ? '✓ Complete contact information found' : '⚠ Missing some contact details'
+        });
+      }
+
+      // 2. Professional Summary/Objective Check
+      const hasSummary = /(professional summary|objective|about|profile|summary)[:\s]/.test(resumeText);
+      if (hasSummary) {
+        scores.professionalSummary = 40;
+        feedback.push({
+          category: 'Professional Summary',
+          score: 40,
+          message: '✓ Professional summary or objective included'
+        });
+      } else {
+        suggestions.push('Add a professional summary or objective statement');
+        feedback.push({
+          category: 'Professional Summary',
+          score: 0,
+          message: '✗ No professional summary found'
+        });
+      }
+
+      // 3. Work Experience Check
+      const hasWorkSection = /(work experience|employment history|experience|job history)[:\s]/i.test(resumeText);
+      const hasBulletPoints = resumeText.includes('\\item') || /[-•]\s/.test(latexCode);
+      const jobTitlePatterns = /(manager|engineer|developer|analyst|coordinator|specialist|director|lead|senior|junior)/i.test(resumeText);
+
+      if (hasWorkSection) scores.workExperience += 20;
+      if (hasBulletPoints) scores.workExperience += 15;
+      if (jobTitlePatterns) scores.workExperience += 15;
+
+      if (hasWorkSection && hasBulletPoints) {
+        feedback.push({
+          category: 'Work Experience',
+          score: Math.min(scores.workExperience, 50),
+          message: '✓ Work experience section with bullet points'
+        });
+      } else {
+        suggestions.push('Organize work experience with bullet points for each achievement');
+        feedback.push({
+          category: 'Work Experience',
+          score: Math.min(scores.workExperience, 50),
+          message: hasBulletPoints ? '✓ Has bullet points' : '⚠ Use bullet points to highlight achievements'
+        });
+      }
+
+      // 4. Education Check
+      const hasEducationSection = /(education|degree|university|college|school)[:\s]/i.test(resumeText);
+      const hasDegree = /(bachelor|master|phd|diploma|associate|b\.a|m\.b\.a|b\.s|m\.s)/i.test(resumeText);
+      const hasGraduationDate = /(\d{4}|\d{2}\/\d{2})/i.test(resumeText);
+
+      if (hasEducationSection) scores.education += 20;
+      if (hasDegree) scores.education += 15;
+      if (hasGraduationDate) scores.education += 15;
+
+      feedback.push({
+        category: 'Education',
+        score: Math.min(scores.education, 50),
+        message: hasEducationSection && hasDegree ? '✓ Education details included' : '⚠ Add education section with degree and institution'
+      });
+
+      // 5. Skills Check
+      const hasSkillsSection = /(skills|technical skills|competencies|abilities)[:\s]/i.test(resumeText);
+      const skillCount = (resumeText.match(/,/g) || []).length; // Count commas as skill separators
+
+      if (hasSkillsSection) scores.skills += 25;
+      if (skillCount > 5) scores.skills += 25;
+
+      feedback.push({
+        category: 'Skills',
+        score: Math.min(scores.skills, 50),
+        message: hasSkillsSection && skillCount > 5 ? '✓ Comprehensive skills section' : '⚠ Add more diverse skills'
+      });
+
+      // 6. Action Verbs Check
+      let actionVerbCount = 0;
+      actionVerbs.forEach(verb => {
+        const regex = new RegExp(`\\b${verb}\\b`, 'gi');
+        actionVerbCount += (resumeText.match(regex) || []).length;
+      });
+
+      if (actionVerbCount > 10) scores.actionVerbs = 40;
+      else if (actionVerbCount > 5) scores.actionVerbs = 25;
+      else if (actionVerbCount > 0) scores.actionVerbs = 15;
+
+      if (actionVerbCount > 5) {
+        feedback.push({
+          category: 'Action Verbs',
+          score: Math.min(scores.actionVerbs, 40),
+          message: `✓ Found ${actionVerbCount} action verbs (excellent!)`
+        });
+      } else {
+        suggestions.push(`Use more action verbs (found only ${actionVerbCount}). Try: Led, Managed, Developed, Achieved, etc.`);
+        feedback.push({
+          category: 'Action Verbs',
+          score: scores.actionVerbs,
+          message: `⚠ Only ${actionVerbCount} action verbs found`
+        });
+      }
+
+      // 7. Quantifiable Results Check
+      const numbers = resumeText.match(/\d+\s*(%|increase|decrease|growth|million|thousand|improvement|reduction)/gi);
+      const quantifiableCount = numbers ? numbers.length : 0;
+
+      if (quantifiableCount > 5) scores.quantifiableResults = 40;
+      else if (quantifiableCount > 2) scores.quantifiableResults = 25;
+      else if (quantifiableCount > 0) scores.quantifiableResults = 15;
+
+      if (quantifiableCount > 2) {
+        feedback.push({
+          category: 'Quantifiable Results',
+          score: Math.min(scores.quantifiableResults, 40),
+          message: `✓ Found ${quantifiableCount} quantifiable metrics (great!)`
+        });
+      } else {
+        suggestions.push(`Add measurable results and numbers (found only ${quantifiableCount}). Use percentages, metrics, achievements.`);
+        feedback.push({
+          category: 'Quantifiable Results',
+          score: scores.quantifiableResults,
+          message: `⚠ Only ${quantifiableCount} quantifiable metrics found`
+        });
+      }
+
+      // 8. Formatting Check
+      const lineCount = resumeLines.length;
+      const hasProperLength = lineCount > 50 && lineCount < 500;
+      const hasConsistentFormatting = (latexCode.match(/\\section/g) || []).length > 0;
+
+      if (hasProperLength) scores.formatting += 20;
+      if (hasConsistentFormatting) scores.formatting += 30;
+
+      feedback.push({
+        category: 'Formatting & Structure',
+        score: Math.min(scores.formatting, 50),
+        message: hasConsistentFormatting ? '✓ Well-organized with clear sections' : '⚠ Use consistent formatting and clear section headings'
+      });
+
+      // Calculate overall score
+      const totalScore = Math.round(
+        (scores.contactInfo * 0.15) +
+        (scores.professionalSummary * 0.12) +
+        (scores.workExperience * 0.20) +
+        (scores.education * 0.12) +
+        (scores.skills * 0.12) +
+        (scores.actionVerbs * 0.15) +
+        (scores.quantifiableResults * 0.10) +
+        (scores.formatting * 0.04)
+      );
+
+      // Display the score
+      displayResumeScore(totalScore, feedback, suggestions);
+    }
+
+    function displayResumeScore(score, feedback, suggestions) {
+      // Update overall score
+      document.getElementById('overallScore').textContent = score;
+
+      // Determine rating
+      let rating = '';
+      if (score >= 80) rating = '🌟 Excellent!';
+      else if (score >= 60) rating = '👍 Good';
+      else if (score >= 40) rating = '⚠️ Fair';
+      else rating = '🔧 Needs Improvement';
+
+      document.getElementById('scoreRating').textContent = rating;
+
+      // Update progress bar
+      const scoreBar = document.getElementById('scoreBar');
+      setTimeout(() => {
+        scoreBar.style.width = score + '%';
+      }, 100);
+
+      // Display category scores
+      const categoryScoresDiv = document.getElementById('categoryScores');
+      categoryScoresDiv.innerHTML = feedback.map(item => `
+        <div style="padding: 1rem; background: white; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <strong style="color: var(--text-primary);">${item.category}</strong>
+            <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary-color);">${item.score}</span>
+          </div>
+          <div style="background: #e5e7eb; height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 0.5rem;">
+            <div style="height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); width: ${item.score}%;"></div>
+          </div>
+          <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">${item.message}</p>
+        </div>
+      `).join('');
+
+      // Display feedback and suggestions
+      const feedbackDiv = document.getElementById('feedbackSection');
+      feedbackDiv.innerHTML = feedback
+        .filter(item => item.score < 50)
+        .map(item => `
+          <div style="padding: 1rem; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 0.5rem;">
+            <strong style="color: #92400e;">${item.category}</strong>
+            <p style="margin: 0.5rem 0 0 0; color: #78350f;">${item.message}</p>
+          </div>
+        `).join('');
+
+      // Display tips
+      const tipsDiv = document.getElementById('tipsSection');
+      tipsDiv.innerHTML = suggestions.slice(0, 5).map(tip => `<li>${tip}</li>`).join('') || '<li>Your resume is looking great! Keep it up.</li>';
+
+      // Show modal
+      const modal = document.getElementById('scoreModal');
+      modal.classList.add('active');
+    }
+
+    function closeScoreModal() {
+      document.getElementById('scoreModal').classList.remove('active');
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', initSession);
+  </script>
+</body>
+</html>

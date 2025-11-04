@@ -1,0 +1,9 @@
+node_modules/
+temp_latex/
+uploads/
+resume-maker.db
+.env
+.DS_Store
+*.log
+dist/
+build/
