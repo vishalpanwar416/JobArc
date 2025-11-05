@@ -11,7 +11,10 @@
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <h2>📄 Files</h2>
+        <div>
+          <h2 style="margin: 0 0 0.25rem 0;">🚀 JobArc</h2>
+          <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">AI Resume Editor</p>
+        </div>
         <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar">☰</button>
       </div>
       <button class="btn-new-file" onclick="createNewFile()" title="Create new file">
@@ -25,7 +28,10 @@
     <div class="main-content">
       <div class="header">
         <button class="sidebar-toggle mobile-only" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
-        <h1>🚀 JobArc</h1>
+        <div>
+          <h1 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">🚀 JobArc</h1>
+          <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">AI-Powered Resume Editor</p>
+        </div>
         <div class="button-group">
           <input type="text" id="fileName" placeholder="Resume name..." class="file-input" maxlength="50">
           <button class="btn btn-secondary" id="undoBtn" onclick="undo()" disabled title="Undo (Ctrl+Z)">
