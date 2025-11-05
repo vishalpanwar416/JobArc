@@ -31,6 +31,27 @@ if (!fs.existsSync(compilationDir)) {
   fs.mkdirSync(compilationDir, { recursive: true });
 }
 
+// Helper function to clean LaTeX code
+function cleanLatexCode(latexCode) {
+  // Remove duplicate \documentclass or \documentstyle commands
+  // Keep only the first one, remove all subsequent occurrences
+  const lines = latexCode.split('\n');
+  let foundDocumentClass = false;
+  const cleanedLines = lines.filter(line => {
+    const trimmedLine = line.trim();
+    if (trimmedLine.match(/^\\documentclass\{/) || trimmedLine.match(/^\\documentstyle\{/)) {
+      if (foundDocumentClass) {
+        // Skip duplicate documentclass/documentstyle
+        return false;
+      }
+      foundDocumentClass = true;
+      return true;
+    }
+    return true;
+  });
+  return cleanedLines.join('\n');
+}
+
 // API endpoint to compile LaTeX
 app.post('/api/compile', (req, res) => {
   const { latexCode } = req.body;
@@ -48,9 +69,12 @@ app.post('/api/compile', (req, res) => {
       fs.mkdirSync(sessionDir, { recursive: true });
     }
 
+    // Clean LaTeX code (remove duplicate \documentclass commands)
+    const cleanedLatexCode = cleanLatexCode(latexCode);
+
     // Write LaTeX file
     const texFile = path.join(sessionDir, 'document.tex');
-    fs.writeFileSync(texFile, latexCode);
+    fs.writeFileSync(texFile, cleanedLatexCode);
 
     // Compile LaTeX to PDF
     const command = `cd ${sessionDir} && pdflatex -interaction=nonstopmode -halt-on-error document.tex`;
