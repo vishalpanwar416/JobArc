@@ -1,17 +1,31 @@
-# LaTeX Overleaf Editor
+# JobArc - AI Resume Editor
 
-A modern web-based LaTeX editor with live PDF preview and download functionality, similar to Overleaf.
+An intelligent, AI-powered resume editor with LaTeX compilation, version control, real-time scoring, and professional PDF generation. Build, refine, and perfect your resume with cutting-edge AI insights.
 
 ## Features
 
-- **Live LaTeX Editor**: Write LaTeX code with syntax highlighting support
-- **Real-time PDF Preview**: See your document rendered in real-time as you type
-- **Auto-compilation**: Automatically compiles LaTeX 1 second after you stop typing
-- **PDF Download**: Download the compiled PDF to your computer
-- **Multi-page Support**: Navigate through multi-page PDFs with page controls
-- **Error Messages**: Clear error reporting when LaTeX compilation fails
-- **Responsive Design**: Works seamlessly on desktop and tablet devices
-- **Clean UI**: Modern interface inspired by Overleaf
+### Core Functionality
+- **AI-Powered Resume Scoring**: Analyze your resume across 8 key categories with actionable feedback
+- **Version Control System**: Automatic and manual version saving with version history timeline
+- **Undo/Redo Support**: Full undo/redo capability with keyboard shortcuts (Ctrl+Z, Ctrl+Y)
+- **LaTeX Editor**: Professional LaTeX resume building with live syntax support
+- **Real-time PDF Preview**: Instant PDF rendering with zoom controls (50-300%)
+- **AI Recommendations**: 300+ action verb database for professional language detection
+- **Quantifiable Metrics Detection**: Identifies and suggests data-driven accomplishments
+
+### User Interface
+- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
+- **Professional Sidebar**: Quick access to all saved files and documents
+- **Dark/Light Theme Support**: Comfortable viewing in any lighting condition
+- **Toast Notifications**: Real-time feedback on user actions
+- **File Management**: Create, load, and delete multiple resume versions
+
+### Advanced Features
+- **Auto-Save**: Automatic saving every 30 seconds (configurable)
+- **Session Management**: Secure session-based file access
+- **Database Storage**: Persistent storage using SQLite3
+- **PDF Download**: Export polished resumes as professional PDFs
+- **LaTeX Error Handling**: Detailed error messages with troubleshooting hints
 
 ## Prerequisites
 
@@ -40,9 +54,10 @@ Download and install MiKTeX from https://miktex.org/download
 
 ## Installation
 
-1. Navigate to the project directory:
+1. Clone the repository:
 ```bash
-cd resume-maker
+git clone https://github.com/vishalpanwar416/jobarc.git
+cd jobarc
 ```
 
 2. Install dependencies:
@@ -57,88 +72,117 @@ npm install
 npm start
 ```
 
-The server will start on `http://localhost:5000`
+The server will start on `http://localhost:3000`
 
-2. Open your web browser and go to:
+2. Open your web browser and navigate to:
 ```
-http://localhost:5000
+http://localhost:3000
 ```
 
 ## Usage
 
-1. **Write LaTeX Code**: Enter your LaTeX code in the editor on the left side
-2. **See Live Preview**: The PDF preview updates automatically after you stop typing for 1 second
-3. **Manual Compile**: Click the "Compile" button to manually compile the document
-4. **Download**: Click "Download PDF" to save the compiled PDF to your computer
-5. **Navigate Pages**: Use the Previous/Next buttons to navigate through multi-page documents
+### Creating a Resume
+1. **Start Fresh**: Click "New File" in the sidebar to create a new resume
+2. **Write in LaTeX**: Enter your resume content in LaTeX format
+3. **Auto-Save**: Your work is automatically saved every 30 seconds
+4. **Manual Save**: Click "Save" to create a named version
 
-## Example LaTeX Document
+### Version Control
+1. **View History**: Click the "History" button to see all versions
+2. **Restore Versions**: Select any previous version to restore it
+3. **Version Stats**: See detailed metadata for each version (size, creation time, type)
+4. **Compare Versions**: Review what changed between versions
 
-A basic template is provided by default:
+### AI Resume Scoring
+1. **Calculate Score**: Click the "⭐ Score" button
+2. **View Analysis**: See your resume analyzed across 8 categories:
+   - Contact Information (15%)
+   - Professional Summary (12%)
+   - Work Experience (20%)
+   - Education (12%)
+   - Skills (12%)
+   - Formatting (4%)
+   - Action Verbs (15%)
+   - Quantifiable Results (10%)
+3. **Get Recommendations**: Receive actionable suggestions to improve your score
+4. **Implement Changes**: Apply feedback and rescore to track improvements
 
-```latex
-\documentclass{article}
-\usepackage[utf8]{inputenc}
-\title{My Document}
-\author{Your Name}
-\date{\today}
-\begin{document}
-\maketitle
-\section{Introduction}
-This is a simple LaTeX document to get you started.
-\end{document}
-```
+### PDF Generation
+1. **Compile**: Click "🔄 Compile" to generate PDF
+2. **Preview**: View the compiled PDF in the preview panel
+3. **Navigate**: Use page controls to navigate multi-page documents
+4. **Zoom**: Adjust zoom level from 50% to 300%
+5. **Download**: Save the final PDF to your computer
+
+## Database Schema
+
+JobArc uses SQLite3 with the following tables:
+
+- **users**: User accounts and authentication
+- **sessions**: Session management and expiry tracking
+- **files**: User documents/resumes
+- **file_versions**: Version history with metadata
+- **compiled_pdfs**: Compiled PDF records
+- **user_settings**: Personalized preferences
 
 ## API Endpoints
 
-### POST /api/compile
-Compiles LaTeX code to PDF
+### Session Management
+- `POST /api/session/create` - Create new user session
+- `GET /api/settings/:sessionId` - Get user settings
+- `POST /api/settings/:sessionId/update` - Update user settings
 
-**Request:**
-```json
-{
-  "latexCode": "\\documentclass{article}..."
-}
-```
+### File Management
+- `GET /api/files/:sessionId` - List user files
+- `POST /api/files/:sessionId/create` - Create new file
+- `DELETE /api/files/:fileId/:sessionId` - Delete file
 
-**Response:**
-```json
-{
-  "success": true,
-  "pdf": "base64encodedpdfdata",
-  "sessionId": "sessionid123"
-}
-```
+### Version Control
+- `POST /api/files/:fileId/save-version` - Save file version
+- `GET /api/files/:fileId/versions/:sessionId` - Get version history
+- `GET /api/versions/:versionId/:sessionId` - Get version content
 
-### GET /api/download/:sessionId
-Downloads the compiled PDF file
+### Compilation
+- `POST /api/compile` - Compile LaTeX to PDF
+- `GET /api/download/:sessionId` - Download compiled PDF
 
 ## Project Structure
 
 ```
-resume-maker/
+jobarc/
 ├── server.js              # Express backend server
+├── db.js                  # SQLite3 database setup
 ├── package.json           # Node dependencies
 ├── public/
-│   ├── index.html        # HTML entry point
-│   ├── app.js            # React application
-│   └── styles.css        # CSS styling
+│   ├── index.html        # Main HTML interface
+│   ├── app.js            # JavaScript application logic
+│   └── styles.css        # CSS styling and layouts
 ├── temp_latex/           # Temporary directory for LaTeX compilation
+├── uploads/              # File upload directory
 └── README.md             # This file
 ```
 
 ## Technical Stack
 
-- **Frontend**: React 18 (CDN-based)
-- **Backend**: Express.js
+- **Frontend**: HTML5, CSS3, Vanilla JavaScript
+- **Backend**: Express.js, Node.js
+- **Database**: SQLite3
 - **PDF Rendering**: PDF.js
-- **LaTeX Compilation**: pdflatex (system command)
-- **Server**: Node.js
+- **LaTeX Compilation**: pdflatex
+- **Session Management**: Crypto-based secure tokens
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Z` | Undo |
+| `Ctrl+Y` | Redo |
+| `Ctrl+Shift+Z` | Redo (alternative) |
 
 ## Troubleshooting
 
 ### pdflatex not found
-If you get an error that `pdflatex` is not found, ensure it's installed and in your system PATH:
+If you get an error that `pdflatex` is not found:
 
 ```bash
 # Test if pdflatex is available
@@ -148,29 +192,41 @@ where pdflatex
 ```
 
 ### Port already in use
-If port 5000 is already in use, you can change it by modifying the PORT variable in `server.js`
+If port 3000 is already in use, modify the PORT variable in `server.js`:
+
+```javascript
+const PORT = process.env.PORT || 3000;
+```
 
 ### LaTeX compilation errors
-Check the error message in the preview panel. Common issues:
-- Missing packages (add them with `\usepackage{...}`)
-- Syntax errors in your LaTeX code
-- Special characters that need escaping
+- Check error messages in the preview panel
+- Ensure required packages are included: `\usepackage{...}`
+- Verify syntax and special character escaping
+- Review common LaTeX pitfalls
 
-## Performance Notes
+### Database errors
+- Ensure `resume-maker.db` is not locked by another process
+- Clear temporary files: `rm -rf temp_latex/*`
+- Reinitialize database if corrupted
 
-- The server automatically cleans up temporary files older than 1 hour
-- Compilation happens server-side with pdflatex for best compatibility
-- PDFs are rendered using PDF.js for fast, reliable preview
+## Performance Optimization
+
+- Automatic cleanup of temporary compilation files (1 hour retention)
+- Server-side LaTeX compilation for reliability
+- Efficient PDF.js rendering for fast previews
+- Debounced auto-save (30 seconds) and history recording (300ms)
+- Maximum edit history: 50 entries to manage memory
 
 ## Future Enhancements
 
-- [ ] Syntax highlighting for LaTeX code
-- [ ] Package management and auto-complete
-- [ ] Cloud storage integration
-- [ ] Collaborative editing
-- [ ] Custom templates library
-- [ ] Dark mode theme
-- [ ] Export to formats other than PDF
+- [ ] Collaborative editing with real-time sync
+- [ ] Multiple resume templates library
+- [ ] LinkedIn profile import
+- [ ] ATS (Applicant Tracking System) score analysis
+- [ ] Custom branding and white-label options
+- [ ] Mobile native applications
+- [ ] Advanced analytics and insights dashboard
+- [ ] Integration with job board APIs
 
 ## License
 
@@ -178,4 +234,13 @@ MIT
 
 ## Support
 
-For issues or feature requests, please open an issue on the GitHub repository.
+For issues, feature requests, or contributions, please visit the GitHub repository:
+https://github.com/vishalpanwar416/jobarc
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request with your improvements.
+
+---
+
+**JobArc** - Your AI-powered path to a perfect resume.

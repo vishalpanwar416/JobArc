@@ -1,5 +1,5 @@
 {
-  "name": "resume-maker",
+  "name": "jobarc",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -7,10 +7,10 @@
     "dev": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": ["ai", "resume", "editor", "job", "career", "latex"],
+  "author": "JobArc Team",
+  "license": "MIT",
+  "description": "AI-powered resume editor with version control, scoring, and LaTeX compilation",
   "dependencies": {
     "body-parser": "^2.2.0",
     "child_process": "^1.0.2",
