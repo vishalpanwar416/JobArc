@@ -51,6 +51,9 @@
           <button class="btn btn-secondary" id="scoreBtn" onclick="calculateResumeScore()" title="Analyze resume quality">
             ⭐ Score
           </button>
+          <button class="btn btn-secondary" id="previewBtn" onclick="openPreviewModal()" disabled title="Open PDF preview">
+            👁️ Preview
+          </button>
           <button class="btn btn-primary" id="downloadBtn" onclick="downloadPdf()" disabled>
             ⬇️ Download
           </button>
@@ -132,6 +135,29 @@
           <div style="display: flex; gap: 1rem; justify-content: flex-end;">
             <button class="file-item-btn" onclick="closeVersionLabelModal()" style="background-color: #95a3b3;">Cancel</button>
             <button class="file-item-btn" onclick="confirmVersionLabel()">Save Label</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Popup Modal -->
+    <div id="previewModal" class="version-modal">
+      <div class="version-content" style="max-width: 900px; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="version-header">
+          <h2>👁️ PDF Preview</h2>
+          <button class="close-btn" onclick="closePreviewModal()">✕</button>
+        </div>
+        <div class="version-body" style="flex: 1; overflow-y: auto; padding: 0; display: flex; flex-direction: column;">
+          <div id="previewModalContent" style="flex: 1; background: #f5f5f5; display: flex; align-items: center; justify-content: center; min-height: 400px;">
+            <div class="placeholder">No PDF loaded. Compile your LaTeX first.</div>
+          </div>
+          <div style="padding: 1rem; border-top: 1px solid var(--border-color); display: flex; gap: 0.5rem; justify-content: center;">
+            <button class="btn btn-primary" onclick="downloadPdfFromModal()" title="Download PDF">
+              ⬇️ Download
+            </button>
+            <button class="btn btn-secondary" onclick="printPdfFromModal()" title="Print PDF">
+              🖨️ Print
+            </button>
           </div>
         </div>
       </div>
@@ -442,6 +468,7 @@ This is a simple LaTeX document to get you started.
           state.currentPage = 1;
           updateStatus('success');
           document.getElementById('downloadBtn').disabled = false;
+          document.getElementById('previewBtn').disabled = false;
           renderPdf();
         } else {
           updateStatus('error');
@@ -455,12 +482,14 @@ This is a simple LaTeX document to get you started.
           }
           showError(errorMsg);
           document.getElementById('downloadBtn').disabled = true;
+          document.getElementById('previewBtn').disabled = true;
         }
       } catch (error) {
         console.error('Error:', error);
         updateStatus('error');
         showError('Error: ' + error.message);
         document.getElementById('downloadBtn').disabled = true;
+        document.getElementById('previewBtn').disabled = true;
       } finally {
         state.isCompiling = false;
       }
@@ -1644,6 +1673,129 @@ This is a simple LaTeX document to get you started.
 
     function closeScoreModal() {
       document.getElementById('scoreModal').classList.remove('active');
+    }
+
+    // ==================== PREVIEW MODAL ====================
+
+    function openPreviewModal() {
+      if (!state.pdfData) {
+        alert('No PDF available. Please compile your LaTeX first.');
+        return;
+      }
+
+      const modal = document.getElementById('previewModal');
+      modal.classList.add('active');
+
+      // Render PDF in modal
+      renderPdfInModal();
+    }
+
+    function closePreviewModal() {
+      document.getElementById('previewModal').classList.remove('active');
+    }
+
+    async function renderPdfInModal() {
+      if (!state.pdfData || !window.pdfjsLib) return;
+
+      try {
+        const binaryString = atob(state.pdfData);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        const pdf = await window.pdfjsLib.getDocument(bytes).promise;
+
+        // Render first page in modal
+        const page = await pdf.getPage(1);
+        const containerWidth = document.getElementById('previewModalContent').clientWidth - 30;
+        const unscaledViewport = page.getViewport({ scale: 1 });
+
+        const scale = Math.min(2, containerWidth / unscaledViewport.width);
+        const viewport = page.getViewport({ scale });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.maxWidth = '100%';
+        canvas.style.height = 'auto';
+        canvas.style.display = 'block';
+
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        await page.render({
+          canvasContext: context,
+          viewport,
+        }).promise;
+
+        const previewContent = document.getElementById('previewModalContent');
+        previewContent.innerHTML = '';
+        previewContent.appendChild(canvas);
+      } catch (error) {
+        console.error('Error rendering PDF in modal:', error);
+        document.getElementById('previewModalContent').innerHTML =
+          '<div class="error-message">Error loading PDF preview</div>';
+      }
+    }
+
+    function downloadPdfFromModal() {
+      if (!state.compilationSessionId) {
+        alert('No PDF available to download');
+        return;
+      }
+
+      const link = document.createElement('a');
+      link.href = `/api/download/${state.compilationSessionId}`;
+      link.download = 'document.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('📥 PDF downloaded');
+    }
+
+    function printPdfFromModal() {
+      if (!state.pdfData) {
+        alert('No PDF available to print');
+        return;
+      }
+
+      // Create an iframe for printing
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+
+      // Convert base64 to blob
+      const binaryString = atob(state.pdfData);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+
+      iframe.src = url;
+      document.body.appendChild(iframe);
+
+      // Wait for iframe to load, then print
+      iframe.onload = function() {
+        try {
+          iframe.contentWindow.print();
+          showToast('🖨️ Print dialog opened');
+        } catch (error) {
+          console.error('Print error:', error);
+          alert('Error opening print dialog');
+        }
+      };
+
+      // Clean up after a delay
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+        URL.revokeObjectURL(url);
+      }, 1000);
     }
 
     // Initialize on page load
