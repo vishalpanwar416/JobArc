@@ -242,6 +242,28 @@ This is a simple LaTeX document to get you started.
   );
 };
 
+// ==================== SIDEBAR TOGGLE ====================
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) {
+    sidebar.classList.toggle('collapsed');
+    // Save preference to localStorage
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    localStorage.setItem('sidebarCollapsed', isCollapsed.toString());
+  }
+}
+
+// Restore sidebar state on page load
+window.addEventListener('DOMContentLoaded', () => {
+  const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+  if (isCollapsed) {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+      sidebar.classList.add('collapsed');
+    }
+  }
+});
+
 console.log('About to render LaTexEditor to root element');
 const rootElement = document.getElementById('root');
 console.log('Root element:', rootElement);
