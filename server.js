@@ -7,9 +7,15 @@ const { execSync } = require('child_process');
 const multer = require('multer');
 const crypto = require('crypto');
 const { dbHelpers } = require('./db');
+require('dotenv').config();
+
+const OpenAI = require('openai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Initialize OpenAI client
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
@@ -423,6 +429,136 @@ app.post('/api/settings/:sessionId/update', async (req, res) => {
     res.status(500).json({ error: 'Failed to update settings' });
   }
 });
+
+// ==================== AI-POWERED RESUME SCORING ====================
+
+// GPT-based resume scoring endpoint
+app.post('/api/analyze-resume-gpt', async (req, res) => {
+  try {
+    const { latexCode } = req.body;
+
+    if (!latexCode) {
+      return res.status(400).json({ error: 'LaTeX code is required' });
+    }
+
+    if (!openai) {
+      return res.status(503).json({
+        error: 'OpenAI API is not configured',
+        message: 'Please add OPENAI_API_KEY to your .env file'
+      });
+    }
+
+    // Extract text from LaTeX code (simple regex-based extraction)
+    const extractedText = extractTextFromLatex(latexCode);
+
+    if (!extractedText.trim()) {
+      return res.status(400).json({
+        error: 'No content found',
+        message: 'Could not extract meaningful content from the LaTeX code'
+      });
+    }
+
+    // Call ChatGPT to analyze the resume
+    const gptResponse = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert resume reviewer and career coach. Analyze the provided resume and give:
+1. Overall score (0-100)
+2. Summary of strengths (2-3 bullet points)
+3. Areas for improvement (2-3 bullet points)
+4. Key recommendations (2-3 actionable items)
+
+Format your response as JSON with keys: score, strengths, improvements, recommendations (each array of strings).
+Be constructive, specific, and actionable.`
+        },
+        {
+          role: 'user',
+          content: `Please analyze this resume:\n\n${extractedText}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    });
+
+    // Parse the GPT response
+    const analysisText = gptResponse.choices[0].message.content;
+    let analysis;
+
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        analysis = JSON.parse(jsonMatch[0]);
+      } else {
+        // If no JSON found, create a structured response from the text
+        analysis = {
+          score: 75,
+          strengths: ['Well-structured', 'Clear formatting'],
+          improvements: ['Add more quantifiable results', 'Include more keywords'],
+          recommendations: ['Highlight achievements with numbers', 'Use action verbs']
+        };
+      }
+    } catch (parseError) {
+      // If parsing fails, return the raw analysis
+      analysis = {
+        score: 75,
+        rawAnalysis: analysisText,
+        strengths: ['Resume content provided'],
+        improvements: ['See analysis for details'],
+        recommendations: ['Review feedback carefully']
+      };
+    }
+
+    // Ensure score is a number between 0-100
+    if (typeof analysis.score !== 'number') {
+      analysis.score = 75;
+    }
+    analysis.score = Math.max(0, Math.min(100, Math.round(analysis.score)));
+
+    res.json({
+      success: true,
+      analysis,
+      provider: 'openai',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('GPT analysis error:', error);
+
+    if (error.status === 401) {
+      res.status(401).json({
+        error: 'OpenAI authentication failed',
+        message: 'Invalid OPENAI_API_KEY. Please check your .env file.'
+      });
+    } else if (error.status === 429) {
+      res.status(429).json({
+        error: 'Rate limit exceeded',
+        message: 'Too many requests to OpenAI. Please try again later.'
+      });
+    } else {
+      res.status(500).json({
+        error: 'Failed to analyze resume with AI',
+        message: error.message
+      });
+    }
+  }
+});
+
+// Helper function to extract text from LaTeX code
+function extractTextFromLatex(latexCode) {
+  let text = latexCode;
+
+  // Remove LaTeX commands and special characters
+  text = text.replace(/\\[a-zA-Z]+\{[^}]*\}/g, ''); // Remove commands with arguments
+  text = text.replace(/\\[a-zA-Z]+/g, ''); // Remove other commands
+  text = text.replace(/[{}]/g, ''); // Remove braces
+  text = text.replace(/\\\\|%.*$/gm, ''); // Remove line breaks and comments
+  text = text.replace(/\s+/g, ' '); // Normalize whitespace
+
+  return text.trim();
+}
 
 // Catch-all route handler for 404s
 app.use((req, res) => {

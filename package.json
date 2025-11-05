@@ -7,7 +7,14 @@
     "dev": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["ai", "resume", "editor", "job", "career", "latex"],
+  "keywords": [
+    "ai",
+    "resume",
+    "editor",
+    "job",
+    "career",
+    "latex"
+  ],
   "author": "JobArc Team",
   "license": "MIT",
   "description": "AI-powered resume editor with version control, scoring, and LaTeX compilation",
@@ -15,8 +22,10 @@
     "body-parser": "^2.2.0",
     "child_process": "^1.0.2",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "multer": "^2.0.2",
+    "openai": "^6.8.1",
     "pdfjs-dist": "^5.4.394",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"

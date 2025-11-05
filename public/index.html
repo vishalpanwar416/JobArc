@@ -51,6 +51,9 @@
           <button class="btn btn-secondary" id="scoreBtn" onclick="calculateResumeScore()" title="Analyze resume quality">
             ⭐ Score
           </button>
+          <button class="btn btn-secondary" id="aiScoreBtn" onclick="calculateAIScore()" title="AI-powered resume analysis using GPT">
+            🤖 AI Score
+          </button>
           <button class="btn btn-secondary" id="previewBtn" onclick="openPreviewModal()" disabled title="Open PDF preview">
             👁️ Preview
           </button>
@@ -1673,6 +1676,132 @@ This is a simple LaTeX document to get you started.
 
     function closeScoreModal() {
       document.getElementById('scoreModal').classList.remove('active');
+    }
+
+    // ==================== AI-POWERED RESUME ANALYSIS ====================
+
+    async function calculateAIScore() {
+      const latexCode = document.getElementById('latexCode').value;
+
+      if (!latexCode.trim()) {
+        alert('Please add some content to your resume first');
+        return;
+      }
+
+      // Show loading state
+      const aiScoreBtn = document.getElementById('aiScoreBtn');
+      const originalText = aiScoreBtn.textContent;
+      aiScoreBtn.disabled = true;
+      aiScoreBtn.textContent = '⟳ Analyzing...';
+
+      try {
+        const response = await fetch('/api/analyze-resume-gpt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ latexCode })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          if (response.status === 503) {
+            alert('OpenAI API is not configured. Please add OPENAI_API_KEY to your .env file.');
+          } else if (response.status === 401) {
+            alert('Invalid OpenAI API key. Please check your .env file.');
+          } else {
+            alert(data.message || data.error || 'Failed to analyze resume with AI');
+          }
+          return;
+        }
+
+        // Display AI analysis in the score modal
+        displayAIScore(data.analysis);
+
+      } catch (error) {
+        console.error('AI analysis error:', error);
+        alert('Error analyzing resume: ' + error.message);
+      } finally {
+        aiScoreBtn.disabled = false;
+        aiScoreBtn.textContent = originalText;
+      }
+    }
+
+    function displayAIScore(analysis) {
+      // Update overall score
+      document.getElementById('overallScore').textContent = analysis.score || 0;
+
+      // Determine rating
+      let rating = '';
+      const score = analysis.score || 0;
+      if (score >= 85) rating = '🌟 Excellent!';
+      else if (score >= 75) rating = '👍 Very Good';
+      else if (score >= 60) rating = '📈 Good';
+      else if (score >= 40) rating = '⚠️ Fair';
+      else rating = '🔧 Needs Work';
+
+      document.getElementById('scoreRating').textContent = rating + ' (AI Analysis)';
+
+      // Update progress bar
+      const scoreBar = document.getElementById('scoreBar');
+      setTimeout(() => {
+        scoreBar.style.width = score + '%';
+      }, 100);
+
+      // Clear category scores for AI analysis
+      const categoryScoresDiv = document.getElementById('categoryScores');
+      categoryScoresDiv.innerHTML = `
+        <div style="padding: 1rem; background: linear-gradient(135deg, #e7eeff 0%, #f0f4ff 100%); border: 2px solid var(--primary-color); border-radius: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+            <span style="font-size: 1.5rem;">🤖</span>
+            <strong style="color: var(--primary-color); font-size: 1.1rem;">AI-Powered Analysis from ChatGPT</strong>
+          </div>
+          <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">
+            This analysis was generated using OpenAI's GPT model to provide expert-level resume feedback.
+          </p>
+        </div>
+      `;
+
+      // Display strengths
+      const feedbackDiv = document.getElementById('feedbackSection');
+      let feedbackHTML = '';
+
+      if (analysis.strengths && analysis.strengths.length > 0) {
+        feedbackHTML += `
+          <div style="padding: 1rem; background: #d1fae5; border-left: 4px solid #10b981; border-radius: 0.5rem;">
+            <strong style="color: #065f46;">✓ Strengths</strong>
+            <ul style="margin: 0.5rem 0 0 0; color: #065f46; padding-left: 1.5rem;">
+              ${analysis.strengths.map(s => `<li>${s}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
+      if (analysis.improvements && analysis.improvements.length > 0) {
+        feedbackHTML += `
+          <div style="padding: 1rem; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 0.5rem;">
+            <strong style="color: #92400e;">⚠ Areas for Improvement</strong>
+            <ul style="margin: 0.5rem 0 0 0; color: #78350f; padding-left: 1.5rem;">
+              ${analysis.improvements.map(i => `<li>${i}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
+      feedbackDiv.innerHTML = feedbackHTML;
+
+      // Display recommendations as tips
+      const tipsDiv = document.getElementById('tipsSection');
+      if (analysis.recommendations && analysis.recommendations.length > 0) {
+        tipsDiv.innerHTML = analysis.recommendations.map(rec => `<li>${rec}</li>`).join('');
+      } else {
+        tipsDiv.innerHTML = '<li>Review the AI analysis above for detailed recommendations</li>';
+      }
+
+      // Show modal
+      const modal = document.getElementById('scoreModal');
+      modal.classList.add('active');
+
+      showToast('🤖 AI analysis complete');
     }
 
     // ==================== PREVIEW MODAL ====================
